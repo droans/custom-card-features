@@ -18,26 +18,27 @@ import { handleConfirmation } from '../utils/cardHelpers';
 
 @customElement('base-custom-feature')
 export class BaseCustomFeature extends LitElement {
-	@property() hass!: HomeAssistant;
-	@property() config!: IEntry;
+	@property() _hass!: HomeAssistant;
+	@property() _config!: IEntry;
 	@property() stateObj?: StateObj;
 
 	@property() shouldRenderRipple = true;
 	rippleEndTimer?: ReturnType<typeof setTimeout>;
 
 	@state() value?: string | number | boolean = 0;
-	entityId?: string;
-	valueAttribute?: string;
+	@state() entityId?: string;
+	valueAttribute = "state";
 	getValueFromHass: boolean = true;
 	getValueFromHassTimer?: ReturnType<typeof setTimeout>;
 	valueUpdateInterval?: ReturnType<typeof setInterval>;
 
-	icon: string = '';
-	label: string = '';
-	styles: string = '';
+	@state() icon: string = '';
+	@state() label: string = '';
+	@state() styles: string = '';
 
-	unitOfMeasurement: string = '';
+	@state() unitOfMeasurement: string = '';
 	precision?: number;
+	templatesSetup = false;
 
 	momentaryStart?: number;
 	momentaryEnd?: number;
@@ -55,6 +56,134 @@ export class BaseCustomFeature extends LitElement {
 	rtl: boolean = false;
 	tabIndex: number = 0;
 	firefox: boolean = /firefox|fxios/i.test(navigator.userAgent);
+
+	public set hass(hass: HomeAssistant) {
+		this._hass = hass;
+		this.setupTemplates();
+	}
+	public get hass() {
+		return this._hass;
+	}
+	public set config(config: IEntry) {
+		this._config = config;
+		this.setupTemplates();
+	}
+	public get config() {
+		return this._config;
+	}
+
+	setupTemplates() {
+		if (this.hass && this.config && !this.templatesSetup) {
+			const conn = this.hass.connection;
+			
+			// Subscribe to the unit of measurement template
+			if (this.config.unit_of_measurement) {
+				if (!hasTemplate(this.config.unit_of_measurement)) {
+					this.unitOfMeasurement = this.config.unit_of_measurement || "";
+				}
+				else {
+					conn.subscribeMessage<{result: string}>(
+						(msg) => {
+							this.unitOfMeasurement = msg.result as string;
+						}, 
+					{
+						type: 'render_template',
+						template: this.config.unit_of_measurement
+					})
+				}
+			}
+			
+			// Subscribe to the icon template
+			if (this.config.icon) {
+				if (!hasTemplate(this.config.icon)) {
+					this.icon = this.config.icon || "";
+				}
+				else {
+					conn.subscribeMessage<{result: string}>(
+						(msg) => {
+							this.icon = msg.result as string;
+						}, 
+					{
+						type: 'render_template',
+						template: this.config.icon
+					})
+				}
+			}
+			
+			// Subscribe to the label template
+			if (this.config.label) {
+				if (!hasTemplate(this.config.label)) {
+					this.label = this.config.label || "";
+				}
+				else {
+					conn.subscribeMessage<{result: string}>(
+						(msg) => {
+							console.log(this.config);
+							console.log(msg);
+							console.log(msg.result);
+							this.label = msg.result as string;
+						}, 
+					{
+						type: 'render_template',
+						template: this.config.label
+					})
+				}
+			}
+			
+			// Subscribe to the styles template
+			if (this.config.styles) {
+				if (!hasTemplate(this.config.styles)) {
+					this.styles = this.config.styles || "";
+				}
+				else {
+					conn.subscribeMessage<{result: string}>(
+						(msg) => {
+							this.styles = msg.result as string;
+						}, 
+					{
+						type: 'render_template',
+						template: this.config.styles
+					})
+				}
+			}
+			
+			// Subscribe to the entity ID template
+			if (this.config.entity_id) {
+				if (!hasTemplate(this.config.entity_id)) {
+					this.entityId = this.config.entity_id || "";
+				}
+				else {
+					conn.subscribeMessage<{result: string}>(
+						(msg) => {
+							this.entityId = msg.result as string;
+						}, 
+					{
+						type: 'render_template',
+						template: this.config.entity_id
+					})
+				}
+			}
+			
+			// Subscribe to the attributes template
+			if (this.config.value_attribute) {
+				if (!hasTemplate(this.config.value_attribute)) {
+					this.valueAttribute = this.config.value_attribute || "";
+				}
+				else {
+					conn.subscribeMessage<{result: string}>(
+						(msg) => {
+							this.valueAttribute = msg.result as string;
+						}, 
+					{
+						type: 'render_template',
+						template: this.config.value_attribute
+					})
+				}
+			}
+			this.templatesSetup = true;
+		}
+
+	}
 
 	fireHapticEvent(haptic: HapticType) {
 		if (
@@ -354,19 +483,19 @@ export class BaseCustomFeature extends LitElement {
 	}
 
 	setValue() {
-		this.entityId = this.renderTemplate(
-			this.config.entity_id as string,
-		) as string;
+		// this.entityId = this.renderTemplate(
+		// 	this.config.entity_id as string,
+		// ) as string;
 
 		if (this.getValueFromHass && this.entityId) {
 			clearInterval(this.valueUpdateInterval);
 			this.valueUpdateInterval = undefined;
 
-			this.valueAttribute = (
-				this.renderTemplate(
-					(this.config.value_attribute as string) ?? 'state',
-				) as string
-			).toLowerCase();
+			// this.valueAttribute = (
+			// 	this.renderTemplate(
+			// 		(this.config.value_attribute as string) ?? 'state',
+			// 	) as string
+			// ).toLowerCase();
 			if (!this.hass.states[this.entityId]) {
 				this.value = undefined;
 			} else if (this.valueAttribute == 'state') {
@@ -694,33 +823,32 @@ export class BaseCustomFeature extends LitElement {
 			changedProperties.has('value') ||
 			changedProperties.has('shouldRenderRipple')
 		) {
-			const value = changedProperties.get('value') || this.value;
 			this.setValue();
 
-			this.unitOfMeasurement =
-				(this.renderTemplate(
-					this.config.unit_of_measurement as string,
-				) as string) ?? '';
+		// 	this.unitOfMeasurement =
+		// 		(this.renderTemplate(
+		// 			this.config.unit_of_measurement as string,
+		// 		) as string) ?? '';
 
-			const icon = this.renderTemplate(this.config.icon as string) as string;
+		// 	const icon = this.renderTemplate(this.config.icon as string) as string;
 
-			const label = this.renderTemplate(this.config.label as string) as string;
+		// 	const label = this.renderTemplate(this.config.label as string) as string;
 
-			const styles = this.renderTemplate(
-				this.config.styles as string,
-			) as string;
+		// 	const styles = this.renderTemplate(
+		// 		this.config.styles as string,
+		// 	) as string;
 
-			if (
-				value != this.value ||
-				icon != this.icon ||
-				label != this.label ||
-				styles != this.styles
-			) {
-				this.icon = icon;
-				this.label = label;
-				this.styles = styles;
-				return true;
-			}
+		// 	if (
+		// 		value != this.value ||
+		// 		icon != this.icon ||
+		// 		label != this.label ||
+		// 		styles != this.styles
+		// 	) {
+		// 		this.icon = icon;
+		// 		this.label = label;
+		// 		this.styles = styles;
+		// 		return true;
+		// 	}
 		}
 
 		if (
@@ -733,6 +861,11 @@ export class BaseCustomFeature extends LitElement {
 
 		return (
 			changedProperties.size == 0 || // Explicitly request update
+			changedProperties.has('unitOfMeasurement') ||
+			changedProperties.has('icon') ||
+			changedProperties.has('label') ||
+			changedProperties.has('styles') ||
+
 			changedProperties.has('value') ||
 			changedProperties.has('pressed')
 		);
