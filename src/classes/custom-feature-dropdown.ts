@@ -381,7 +381,7 @@ export class CustomFeatureDropdown extends BaseCustomFeature {
 
 @customElement('custom-feature-dropdown-option')
 export class CustomFeatureDropdownOption extends BaseCustomFeature {
-	@property() config!: IOption;
+	@property() _config!: IOption;
 
 	onPointerDown(e: PointerEvent) {
 		super.onPointerDown(e);
@@ -393,7 +393,7 @@ export class CustomFeatureDropdownOption extends BaseCustomFeature {
 		e.preventDefault();
 		if (!this.swiping && this.initialX && this.initialY) {
 			this.closeDropdown(
-				this.renderTemplate(this.config.option as string) as string,
+				this.renderTemplate(this._config.option as string) as string,
 				Boolean(e.pointerType),
 			);
 			await this.sendAction('tap_action');
